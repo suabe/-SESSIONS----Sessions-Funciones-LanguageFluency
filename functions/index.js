@@ -97,17 +97,17 @@ exports.recurringPayment = functions.https.onRequest((request, response) => {
 });
 
 //Funciones Twilio
-
+//Speaker Inicia llamada
 exports.llamadaSaliente = functions.https.onRequest((request, response) => {
     cors( request, response,  () => {
         response.setHeader('Access-Control-Allow-Origin', '*');
         const client = require('twilio')(accountSid, authToken);
         client.calls.create({
-            url: 'https://us-central1-ejemplocrud-e7eb1.cloudfunctions.net/agregarNumero?destino='+request.body.destination,
-            to: request.body.source,
-            from: '+14703482834',
+            url: 'https://us-central1-ejemplocrud-e7eb1.cloudfunctions.net/agregarNumero?destino='+request.body.destination,//Se manda el numero del Improver para contactarlo una ves el Speaker conteste la llamada
+            to: request.body.source,//Nmumero del Speaker
+            from: '+14703482834',//Numero que asigna Twilio, este es de pruebas
             record: true
-        }).then(call => {
+        }).then(call => {//Se guardan los datos de la llamda, conesto se consultara para obtenr los datos y grabaciones de la misma
             const db = admin.firestore();
             let dataCall = {
                 sid: call.sid,
@@ -135,7 +135,8 @@ async function registCall (call) {
     }
     const registrar = await db.collection('calls').doc(call.sid).set(dataCall)
 }
-
+//Esta funcion inicia unaves el Speker conteste la llamada de Twilio
+//Se utiliza al API de Twilio
 exports.agregarNumero = functions.https.onRequest((request, response) => {
     cors( request, response, () => {
         response.setHeader('Access-Control-Allow-Origin', '*');
@@ -145,7 +146,7 @@ exports.agregarNumero = functions.https.onRequest((request, response) => {
         respuesta.say({
             voice: "woman",
             language: "es-MX"
-        },"Espere, procesando llamada");
+        },"Espere, procesando llamada");//Mensaje al Speaker/Intento de llamada al ImProver
         const dial = respuesta.dial();
         dial.number(request.query.destino);
         //console.log(respuesta.toString());
@@ -154,7 +155,7 @@ exports.agregarNumero = functions.https.onRequest((request, response) => {
 });
 
 // FUnciones Firebase Messagein
-
+//Se registan los usuario a Temas(Topic)
 exports.registTopic = functions.database.ref('/perfiles/{userUID}').onUpdate((change, context) => {
     const user = change.data();
     console.log(user);
@@ -168,13 +169,13 @@ exports.registTopic = functions.database.ref('/perfiles/{userUID}').onUpdate((ch
 
 
 //Funciones Admin
-
+//Se registra usuario Administrador en Firebase, no se genera perfil
 exports.regAdmin = functions.https.onRequest((request, response) => {
     cors( request, response, () =>{
         response.setHeader('Access-Control-Allow-Origin', '*');
         admin.auth().createUser({
             email: request.body.email,
-            emailVerified: true,            
+            emailVerified: true, //No se envia email de verificacion           
             password: request.body.password,
             displayName: `${request.body.name} ${request.body.lastName}`,
             disabled: false
