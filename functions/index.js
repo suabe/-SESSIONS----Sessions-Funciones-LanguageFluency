@@ -4,7 +4,7 @@ const cors = require("cors")({ origin: true });
 const StripeCreator = require('stripe');
 const apiKey = 'sk_test_51IdzQvFjLGC5FmHqrgFNYL0jVX0gHMB4vaVBkSexf8EYSCSO0yDBrRdwOnprDsX06tevgA4iVhIj1tWgR1F8D3Lp00ro1XfjxY';
 const accountSid = 'AC22ae1dad8bd832a2ecd25b28742feddc'; // Your Account SID from www.twilio.com/console
-const authToken = '05aa8e9764b5cdc3a22cb155de1ce8fa';   // Your Auth Token from www.twilio.com/console
+const authToken = '26e5c5ecaf582e6072a66b313c733215';   // Your Auth Token from www.twilio.com/console
 
 // // Create and Deploy Your First Cloud Functions
 // // https://firebase.google.com/docs/functions/write-firebase-functions
@@ -147,7 +147,7 @@ exports.agregarNumero = functions.https.onRequest((request, response) => {
             voice: "woman",
             language: "es-MX"
         },"Espere, procesando llamada");//Mensaje al Speaker/Intento de llamada al ImProver
-        const dial = respuesta.dial();
+        const dial = respuesta.dial({ timeLimit: 600 });//Limite de la llamda, tiempo en segundos
         dial.number(request.query.destino);
         //console.log(respuesta.toString());
         response.send(respuesta.toString());
