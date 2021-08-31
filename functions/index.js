@@ -4,7 +4,9 @@ const cors = require("cors")({ origin: true });
 const StripeCreator = require('stripe');
 const apiKey = 'sk_test_51IdzQvFjLGC5FmHqrgFNYL0jVX0gHMB4vaVBkSexf8EYSCSO0yDBrRdwOnprDsX06tevgA4iVhIj1tWgR1F8D3Lp00ro1XfjxY';
 const accountSid = 'AC22ae1dad8bd832a2ecd25b28742feddc'; // Your Account SID from www.twilio.com/console
-const authToken = '26e5c5ecaf582e6072a66b313c733215';   // Your Auth Token from www.twilio.com/console
+const authToken = '37f93738ce6c4825f8cdc0f6b11cd8ca';   // Your Auth Token from www.twilio.com/console
+const nodemailer = require('nodemailer');
+const { assign } = require("nodemailer/lib/shared");
 
 // // Create and Deploy Your First Cloud Functions
 // // https://firebase.google.com/docs/functions/write-firebase-functions
@@ -112,6 +114,7 @@ exports.llamadaSaliente = functions.https.onRequest((request, response) => {
             let dataCall = {
                 sid: call.sid,
                 uri: call.uri,
+                create: Date.now().toString(),
                 recordings: call.subresourceUris.recordings,
                 inmpId:  request.body.impId,
                 speId: request.body.speId
@@ -154,6 +157,16 @@ exports.agregarNumero = functions.https.onRequest((request, response) => {
     });
 });
 
+exports.twilioWebhook = functions.https.onRequest((request, response) =>{
+    cors( request, response, () => {
+        response.setHeader('Access-Control-Allow-Origin', '*');
+        const db = admin.firestore();
+        let d = Date.now().toString();
+        const record = db.collection('webHook').doc(d).set(request.body)
+        response.status(201).send('good').end();
+    } );
+});
+
 // FUnciones Firebase Messagein
 //Se registan los usuario a Temas(Topic)
 exports.registTopic = functions.database.ref('/perfiles/{userUID}').onUpdate((change, context) => {
@@ -186,3 +199,30 @@ exports.regAdmin = functions.https.onRequest((request, response) => {
         });
     });
 })
+
+let transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: 'seiyasuabe@gmail.com',
+        pass: 'hbifoudwoehlbiyq'
+    }
+})
+
+exports.sendEmailPotencial = functions.firestore.document('potenciales/{potecialId}').onCreate(
+    async (snap, context) => {        
+        const mailOptions = {
+            from: 'Language Fluency <admin@lflanguagefluency.com>',
+            to: snap.data().email,
+            subject: 'contact form message',
+            html: `<h1>Order Confirmation</h1>
+            <p> <b>Email: </b>${snap.data().email} </p>`
+        }
+
+        return transporter.sendMail(mailOptions, (erro, info) => {
+            if(erro){
+                return res.send(erro.toString());
+            }
+            return res.send('Sended');
+        });
+    }
+)
