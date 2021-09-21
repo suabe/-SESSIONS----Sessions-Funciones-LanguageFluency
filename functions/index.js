@@ -4,9 +4,10 @@ const cors = require("cors")({ origin: true });
 const StripeCreator = require('stripe');
 const apiKey = 'sk_test_51IdzQvFjLGC5FmHqrgFNYL0jVX0gHMB4vaVBkSexf8EYSCSO0yDBrRdwOnprDsX06tevgA4iVhIj1tWgR1F8D3Lp00ro1XfjxY';
 const accountSid = 'AC22ae1dad8bd832a2ecd25b28742feddc'; // Your Account SID from www.twilio.com/console
-const authToken = '37f93738ce6c4825f8cdc0f6b11cd8ca';   // Your Auth Token from www.twilio.com/console
+const authToken = '84e565cb348fe86545ebfd53617bb4ca';   // Your Auth Token from www.twilio.com/console
 const nodemailer = require('nodemailer');
 const { assign } = require("nodemailer/lib/shared");
+const { ref } = require("firebase-functions/lib/providers/database");
 
 // // Create and Deploy Your First Cloud Functions
 // // https://firebase.google.com/docs/functions/write-firebase-functions
@@ -61,16 +62,16 @@ exports.recurringPayment = functions.https.onRequest((request, response) => {
         const data = request.body.data.object
         if (!data) throw new Error('sin datos');
         const db = admin.firestore();
-        const wallet =  db.collection('wallet');
+        const wallet =  db.collection('plans');
         const user = await wallet.where('customer', '==', data.customer).get();
         if (!user.empty) {
-            const snapshot = user.docs[0]
-            //response.send(snapshot.id)
+            const snapshot = user.docs[0].data()
+            //response.send(snapshot)
             switch (hook) {
                 case 'invoice.payment_succeeded':
                     let susCrip = {
                         customer: data.customer,
-                        uid: snapshot.id,
+                        uid: snapshot.uid,
                         subscription: data.subscription,
                         invoice: data.id,
                         created: data.created,
@@ -79,13 +80,13 @@ exports.recurringPayment = functions.https.onRequest((request, response) => {
                         pdfInvoice: data.invoice_pdf,
                         active: true
                     }
-                    const activate = await db.collection('wallet').doc(snapshot.id).update({activa: true})
+                    const activate = await db.collection('plans').doc(data.subscription).update({activa: true})
                     const plan = await db.collection('pagos').doc(data.id).set(susCrip)
                     response.send({err: 0, msg: 'Ok...'})
                     break;
                 
                 case 'invoice.payment_failed':
-                    const update = await db.collection('wallet').doc(snapshot.id).update({activa: false})
+                    const update = await db.collection('plans').doc(data.subscription).update({activa: false})
                     response.send({err: 0, msg: 'Ok...'})
                     break;
             
@@ -93,6 +94,8 @@ exports.recurringPayment = functions.https.onRequest((request, response) => {
                     break;
             }
             
+        } else {
+            response.send({err: 0, msg: 'No hay plan asociado'})
         }
        
     });
@@ -207,6 +210,80 @@ let transporter = nodemailer.createTransport({
         pass: 'hbifoudwoehlbiyq'
     }
 })
+
+exports.sendEmailInvoice = functions.https.onRequest((request, response) => {
+    cors(request, response, () => {
+        response.setHeader('Access-Control-Allow-Origin', '*');
+        const mailOptions = {
+            from: 'Language Fluency <admin@lflanguagefluency.com>',
+            to: request.body.email,
+            subject: 'Factura Servicio',
+            html: `<h1>Order Confirmation</h1>
+            <p> <b>Email: </b>Invoice </p>`,
+            attachments: [
+                {
+                    filename: 'Factura.pdf',
+                    path: request.body.file
+                }
+            ]
+        }
+
+        return transporter.sendMail(mailOptions, (erro, info) => {
+            if(erro){
+                return res.send(erro.toString());
+            }
+            return res.send('Sended');
+        });
+    });
+})
+
+exports.sendEmailSupport = functions.https.onRequest((request, response) => {
+    cors(request, response, () => {
+        response.setHeader('Access-Control-Allow-Origin', '*');
+        const mailOptions = {
+            from: 'Language Fluency <admin@lflanguagefluency.com>',
+            to: request.body.email,
+            subject: 'contact form support',
+            html: `<h1>Order Confirmation</h1>
+            <p> <b>Email: </b>${request.body.response} </p>`
+        }
+
+        return transporter.sendMail(mailOptions, (erro, info) => {
+            if(erro){
+                return res.send(erro.toString());
+            }
+            return res.send('Sended');
+        });
+    });
+})
+
+exports.createIdF = functions.firestore.document('perfiles/{uid}').onCreate(
+    async (snap, context) => {
+        const db = admin.firestore();
+        var padLeft = n => "0000000".substring(0, "0000000".length - n.length) + n;
+        if (snap.data().role == 'cliente') {
+            const improvers = await db.collection('perfiles').where('role', '==', 'cliente').get()
+            if (!improvers.empty) {
+                let contador = improvers.size;
+                let data = {
+                    LFId: 'I'+padLeft(contador + "")
+                };          
+                await db.collection('perfiles').doc(context.params.uid).update(data)
+            }
+            
+        } if (snap.data().role == 'conversador') {
+            const improvers = await db.collection('perfiles').where('role', '==', 'conversador').get()
+            if (!improvers.empty) {
+                let contador = improvers.size;
+                let data = {
+                    LFId: 'S'+padLeft(contador + "")
+                };          
+                await db.collection('perfiles').doc(context.params.uid).update(data)
+            }
+        }
+    }
+)
+
 
 exports.sendEmailPotencial = functions.firestore.document('potenciales/{potecialId}').onCreate(
     async (snap, context) => {        
