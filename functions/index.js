@@ -4,7 +4,7 @@ const cors = require("cors")({ origin: true });
 const StripeCreator = require('stripe');
 const apiKey = 'sk_test_51IdzQvFjLGC5FmHqrgFNYL0jVX0gHMB4vaVBkSexf8EYSCSO0yDBrRdwOnprDsX06tevgA4iVhIj1tWgR1F8D3Lp00ro1XfjxY';
 const accountSid = 'AC22ae1dad8bd832a2ecd25b28742feddc'; // Your Account SID from www.twilio.com/console
-const authToken = '84e565cb348fe86545ebfd53617bb4ca';   // Your Auth Token from www.twilio.com/console
+const authToken = '6d0d6f07eba5f803bff62351433f8fc5';   // Your Auth Token from www.twilio.com/console
 const nodemailer = require('nodemailer');
 const { assign } = require("nodemailer/lib/shared");
 const { ref } = require("firebase-functions/lib/providers/database");
@@ -46,14 +46,40 @@ exports.crearPlan = functions.https.onRequest((request, response) => {
             items: [
                 {price: request.body.priceId},
               ]
-        }).then((respesta) => {
-            response.send(respesta);
+        }).then((respuesta) => {
+            response.send(respuesta);
         }).catch( error => {
             response.send(error);
         });
         // response.send('saludos');
     });
 });
+
+exports.updatePlan = functions.https.onRequest((request, response) => {
+    cors(request, response, () => {
+        response.setHeader('Access-Control-Allow-Origin', '*');
+        let stripe = StripeCreator(apiKey);
+        stripe.subscriptions.update(request.body.plan,{
+            customer: request.body.customer
+        }).then((respuesta) => {
+            response.send(respuesta);
+        }).catch( error => {
+            response.send(error);
+        });
+    })
+})
+
+exports.deletePlan = functions.https.onRequest((request, response) => {
+    cors( request, response, () => {
+        response.setHeader('Access-Control-Allow-Origin', '*');
+        let stripe = StripeCreator(apiKey);
+        stripe.subscriptions.del(request.body.plan).then((respuesta) => {
+            response.send(respuesta);
+        }).catch( error => {
+            response.send(error);
+        });
+    } )
+})
 
 exports.recurringPayment = functions.https.onRequest((request, response) => {
     cors(request, response, async () => {
@@ -154,6 +180,7 @@ exports.agregarNumero = functions.https.onRequest((request, response) => {
             language: "es-MX"
         },"Espere, procesando llamada");//Mensaje al Speaker/Intento de llamada al ImProver
         const dial = respuesta.dial({ timeLimit: 600 });//Limite de la llamda, tiempo en segundos
+        respuesta.record();
         dial.number(request.query.destino);
         //console.log(respuesta.toString());
         response.send(respuesta.toString());
@@ -187,6 +214,24 @@ exports.registTopic = functions.database.ref('/perfiles/{userUID}').onUpdate((ch
 //Funciones Admin
 //Se registra usuario Administrador en Firebase, no se genera perfil
 exports.regAdmin = functions.https.onRequest((request, response) => {
+    cors( request, response, () =>{
+        response.setHeader('Access-Control-Allow-Origin', '*');
+        admin.auth().createUser({
+            email: request.body.email,
+            emailVerified: true, //No se envia email de verificacion           
+            password: request.body.password,
+            displayName: `${request.body.name} ${request.body.lastName}`,
+            disabled: false
+        }).then((userRecord) => {
+            response.send({uid: userRecord.uid, msg: 'Successfully created new user'})
+        }).catch((error) => {
+            response.send({error: error})
+        });
+    });
+})
+
+//Registro de potencial aprovado
+exports.regSpeaker = functions.https.onRequest((request, response) => {
     cors( request, response, () =>{
         response.setHeader('Access-Control-Allow-Origin', '*');
         admin.auth().createUser({
@@ -244,7 +289,7 @@ exports.sendEmailSupport = functions.https.onRequest((request, response) => {
             from: 'Language Fluency <admin@lflanguagefluency.com>',
             to: request.body.email,
             subject: 'contact form support',
-            html: `<h1>Order Confirmation</h1>
+            html: `<h1>Support Response</h1>
             <p> <b>Email: </b>${request.body.response} </p>`
         }
 
@@ -256,6 +301,15 @@ exports.sendEmailSupport = functions.https.onRequest((request, response) => {
         });
     });
 })
+
+exports.contSpeakers = functions.firestore.document('perfiles/{uid}').onCreate(
+    async (snap, context) => {
+        const db = admin.firestore();
+        if (snap.data().role == 'conversador') {
+            let pais = 'helo'
+        }
+    }
+);
 
 exports.createIdF = functions.firestore.document('perfiles/{uid}').onCreate(
     async (snap, context) => {
