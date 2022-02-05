@@ -4,7 +4,7 @@ const cors = require("cors")({ origin: true });
 const StripeCreator = require('stripe');
 const apiKey = 'sk_test_51IdzQvFjLGC5FmHqrgFNYL0jVX0gHMB4vaVBkSexf8EYSCSO0yDBrRdwOnprDsX06tevgA4iVhIj1tWgR1F8D3Lp00ro1XfjxY';
 const accountSid = 'AC22ae1dad8bd832a2ecd25b28742feddc'; // Your Account SID from www.twilio.com/console
-const authToken = '6d0d6f07eba5f803bff62351433f8fc5';   // Your Auth Token from www.twilio.com/console
+const authToken = 'ce081d6d5457e766381d8ba6ca09d468';   // Your Auth Token from www.twilio.com/console
 const nodemailer = require('nodemailer');
 const { assign } = require("nodemailer/lib/shared");
 const { ref } = require("firebase-functions/lib/providers/database");
@@ -146,7 +146,8 @@ exports.llamadaSaliente = functions.https.onRequest((request, response) => {
                 create: Date.now().toString(),
                 recordings: call.subresourceUris.recordings,
                 inmpId:  request.body.impId,
-                speId: request.body.speId
+                speId: request.body.speId,
+                planId: request.body.planId
             }
             let registrar = db.collection('calls').doc(call.sid).set(dataCall)
             response.send(call);
@@ -156,17 +157,7 @@ exports.llamadaSaliente = functions.https.onRequest((request, response) => {
     });
 });
 
-async function registCall (call) {
-    const db = admin.firestore();
-    let dataCall = {
-        sid: call.sid,
-        uri: call.uri,
-        recordings: call.subresourceUris.recordings,
-        inmpId:  request.body.impId,
-        speId: request.body.speId
-    }
-    const registrar = await db.collection('calls').doc(call.sid).set(dataCall)
-}
+
 //Esta funcion inicia unaves el Speker conteste la llamada de Twilio
 //Se utiliza al API de Twilio
 exports.agregarNumero = functions.https.onRequest((request, response) => {
